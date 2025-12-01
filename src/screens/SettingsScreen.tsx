@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, View, Text, Pressable, Switch } from 'react-native';
+import { ScrollView, View, Text, Pressable, Switch, SafeAreaView } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import VoiceButton from '../components/VoiceButton';
 import type { VoiceCommandState } from '../voice/state';
@@ -42,9 +42,9 @@ export default function SettingsScreen({
   const [autoSavings, setAutoSavings] = React.useState(false);
 
   return (
-    <View className="flex-1 bg-[#f5f7fb]">
+    <SafeAreaView className="flex-1 bg-[#f5f7fb]">
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 48 }}>
-        <View className="px-6 pb-12 pt-16">
+        <View className="px-6 pb-12 pt-10">
           <View className="mb-8">
             <Text className="text-xs uppercase tracking-[0.25em] text-gray-400">
               Preferencias personales
@@ -194,6 +194,6 @@ export default function SettingsScreen({
           </View>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }

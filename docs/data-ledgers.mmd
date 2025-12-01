@@ -1,0 +1,42 @@
+graph TB
+    subgraph Host Dev Local
+        direction TB
+        subgraph Pila Banco
+            BB["bank_backend_django\n(API Django)"]
+            BP["PostgreSQL (banco)"]
+            BCore["Simuladores core bancario"]
+            BB --> BP
+            BP --> BCore
+        end
+
+        subgraph Pila Aseguradora
+            IB["aseguradora_backend"]
+            IP["PostgreSQL (seguros)"]
+            IT["Shard TigerBeetle (pólizas/siniestros)"]
+            IB --> IP
+            IB --> IT
+        end
+
+        subgraph Pila CETES
+            CB["cetes_backend"]
+            CP["PostgreSQL (cetes)"]
+            CT["Shard TigerBeetle (inversiones)"]
+            CB --> CP
+            CB --> CT
+        end
+    end
+
+    subgraph Apps Cliente
+        direction TB
+        OA["App-Open-Finances\n(TPP móvil)"]
+        FA["Frontend-Banco\n(portal clientes)"]
+        AA["App Aseguradora"]
+        CA["App Cetes"]
+    end
+
+    OA -.REST / GraphQL.- BB
+    OA -.REST / GraphQL.- IB
+    OA -.REST / GraphQL.- CB
+    FA -.HTTPS.- BB
+    AA -.HTTPS.- IB
+    CA -.HTTPS.- CB

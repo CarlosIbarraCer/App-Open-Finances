@@ -1,0 +1,23 @@
+sequenceDiagram
+    participant U as Persona usuaria
+    participant M as App-Open-Finances
+    participant T as Backend TPP
+    participant B as Backend Banco
+    participant I as Backend Aseguradora
+    participant C as Backend CETES
+
+    U->>M: Abre la app y se autentica
+    M->>T: Envía credenciales / consentimientos
+    T->>B: Intercambia código OAuth por tokens bancarios
+    B-->>T: Retorna access + refresh tokens
+    T-->>M: Envía cuentas y balances bancarios
+    U->>M: Solicita un producto de seguro
+    M->>T: Dispara intención de seguros
+    T->>I: POST /polizas (JWT)
+    I-->>T: Devuelve póliza + id de ledger
+    T-->>M: Renderiza la respuesta
+    U->>M: Compra CETES
+    M->>T: Envía payload de inversión
+    T->>C: POST /inversiones
+    C-->>T: Confirmación y referencias de liquidación
+    T-->>M: Confirmación final y portafolio actualizado

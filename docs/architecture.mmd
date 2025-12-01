@@ -1,0 +1,44 @@
+graph LR
+    subgraph TPP["Proveedor de Servicios (TPP)"]
+        direction TB
+        A1["App-Open-Finances\n(Expo / React Native)"]
+        A2["Backend TPP\n(API Node @ ngrok)"]
+        A3["Almacén de consentimientos y tokens"]
+        A1 -->|OAuth2 / OIDC| A2
+        A2 --> A3
+    end
+
+    subgraph Bank_ASPSP["Banco ASPSP"]
+        direction TB
+        B1["Frontend-Banco\n(Web)"]
+        B2["bank_backend_django\n(Django REST)"]
+        B3["Core bancario / PostgreSQL"]
+        B1 -->|APIs de sesión| B2
+        B2 --> B3
+    end
+
+    subgraph Insurance_ASPSP["Aseguradora ASPSP"]
+        direction TB
+        C1["App Aseguradora\n(Expo/Web)"]
+        C2["aseguradora_backend\n(Django REST)"]
+        C3["PostgreSQL de pólizas"]
+        C4["Ledger TigerBeetle"]
+        C1 --> C2
+        C2 --> C3
+        C2 --> C4
+    end
+
+    subgraph Investment_ASPSP["CETES ASPSP"]
+        direction TB
+        D1["App Cetes\n(Expo/Web)"]
+        D2["cetes_backend\n(Django REST)"]
+        D3["PostgreSQL de inversiones"]
+        D4["Ledger TigerBeetle"]
+        D1 --> D2
+        D2 --> D3
+        D2 --> D4
+    end
+
+    A2 <--> |APIs open banking| B2
+    A2 <--> |APIs seguros| C2
+    A2 <--> |APIs inversión| D2

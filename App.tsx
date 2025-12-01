@@ -30,6 +30,11 @@ import {
   loginUser as loginWithBackend,
   registerUser as registerWithBackend,
 } from './src/api/backend';
+import {
+  fetchBankBalance,
+  registerBankAccount,
+  type BankAccountSummary,
+} from './src/api/bank';
 
 type RootScreen =
   | 'welcome'
@@ -92,6 +97,7 @@ const buildNameFromEmail = (email: string) => {
 
 const VOICE_PREF_KEY = 'app.voiceCommandsEnabled';
 const SESSION_STORAGE_KEY = 'app.authSession';
+const LAST_LOGIN_EMAIL_KEY = 'app.lastLoginEmail';
 
 export default function App() {
   const [rootScreen, setRootScreen] = React.useState<RootScreen>('welcome');
@@ -120,6 +126,10 @@ export default function App() {
   const [activeOpenFinanceModule, setActiveOpenFinanceModule] =
     React.useState<OpenFinanceModuleKey | null>(null);
   const [session, setSession] = React.useState<AuthSession | null>(null);
+  const [bankAccount, setBankAccount] = React.useState<BankAccountSummary | null>(null);
+  const [isBankSyncing, setIsBankSyncing] = React.useState(false);
+  const [bankSyncError, setBankSyncError] = React.useState<string | null>(null);
+  const [lastLoginEmail, setLastLoginEmail] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (activeUser) {
@@ -147,6 +157,33 @@ export default function App() {
         }
       })
       .catch(() => undefined);
+  }, []);
+
+  React.useEffect(() => {
+    AsyncStorage.getItem(LAST_LOGIN_EMAIL_KEY)
+      .then((value) => {
+        if (value) {
+          setLastLoginEmail(value);
+        }
+      })
+      .catch(() => undefined);
+  }, []);
+
+  const syncBankData = React.useCallback(async (email: string, name?: string) => {
+    try {
+      setIsBankSyncing(true);
+      await registerBankAccount({ email, firstName: name });
+      const summary = await fetchBankBalance({ email });
+      setBankAccount(summary);
+      setBankSyncError(null);
+    } catch (err) {
+      console.error('Error syncing bank account', err);
+      setBankSyncError(
+        err instanceof Error ? err.message : 'No fue posible sincronizar la cuenta bancaria.',
+      );
+    } finally {
+      setIsBankSyncing(false);
+    }
   }, []);
 
   const persistSession = async (payload: AuthSession) => {
@@ -218,6 +255,8 @@ export default function App() {
         expiresIn: tokens.expires_in,
         tokenType: tokens.token_type,
       });
+      setLastLoginEmail(normalizedEmail);
+      AsyncStorage.setItem(LAST_LOGIN_EMAIL_KEY, normalizedEmail).catch(() => undefined);
       setLoginMessage('Sesión iniciada correctamente.');
       const existingUser = users.find((candidate) => candidate.email === normalizedEmail);
       let resolvedUser: StoredUser;
@@ -235,6 +274,7 @@ export default function App() {
         setUsers((prev) => [...prev, resolvedUser]);
       }
       setActiveUser(resolvedUser);
+      syncBankData(normalizedEmail, resolvedUser.name);
       setActiveTab('home');
       setRootScreen('dashboard');
     } catch (error) {
@@ -328,6 +368,8 @@ export default function App() {
     resetFeedback();
     setRootScreen('welcome');
     clearSession();
+    setBankAccount(null);
+    setBankSyncError(null);
     AccessibilityInfo.announceForAccessibility('Sesión cerrada');
   };
 
@@ -424,7 +466,30 @@ export default function App() {
 
   const renderDashboardContent = () => {
     if (simplifiedMode) {
-      return <SimplifiedDashboard userName={activeUser?.name ?? 'Juan Pérez'} />;
+      const resolvedEmail = bankAccount?.email ?? activeUser?.email ?? lastLoginEmail ?? undefined;
+      return (
+        <SimplifiedDashboard
+          userName={activeUser?.name ?? 'Juan Pérez'}
+          userEmail={resolvedEmail}
+          bankAccount={bankAccount}
+          bankSyncing={isBankSyncing}
+          bankError={bankSyncError}
+          onRefreshBank={() => {
+            const targetEmail = bankAccount?.email ?? activeUser?.email ?? lastLoginEmail;
+            if (!targetEmail) {
+              setBankSyncError('Necesitas iniciar sesión para sincronizar tu cuenta bancaria.');
+              return;
+            }
+            const targetName = activeUser?.name ?? buildNameFromEmail(targetEmail);
+            setBankSyncError(null);
+            syncBankData(targetEmail, targetName);
+          }}
+          onExitSimplified={() => {
+            setSimplifiedMode(false);
+            setActiveTab('home');
+          }}
+        />
+      );
     }
     if (activeTab === 'search') {
       return (

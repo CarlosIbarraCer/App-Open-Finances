@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   View,
   AccessibilityInfo,
+  SafeAreaView,
+  useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -43,6 +45,8 @@ export default function LoginScreen({
   error,
   info,
 }: LoginScreenProps) {
+  const { width } = useWindowDimensions();
+  const formWidth = Math.min(width - 32, 420);
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [showPassword, setShowPassword] = React.useState(false);
@@ -138,11 +142,15 @@ export default function LoginScreen({
   );
 
   return (
-    <KeyboardAvoidingView
-      className="flex-1 bg-white"
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <LinearGradient colors={['#46c3db', '#60dbb8']} className="rounded-b-[32px] pb-8 pt-14">
-        <View className="flex-row items-center justify-between px-6">
+    <SafeAreaView className="flex-1 bg-[#f4f6fb]">
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <LinearGradient
+          colors={['#2dd4bf', '#2563eb']}
+          className="rounded-b-[32px] pb-8 pt-10"
+          style={{ paddingTop: Platform.OS === 'ios' ? 0 : 32 }}>
+          <View className="flex-row items-center justify-between px-6">
           <TouchableOpacity
             onPress={onBack}
             accessibilityRole="button"
@@ -154,17 +162,24 @@ export default function LoginScreen({
             <Text className="text-base font-semibold text-white">Retroceder</Text>
           </TouchableOpacity>
           <Ionicons name="lock-closed-outline" size={20} color="#fff" />
-        </View>
-        <View className="px-6 pt-6">
-          <Text className="text-2xl font-semibold text-white">Bienvenido de nuevo</Text>
-          <Text className="text-sm text-white/80">Ingresa tus datos para iniciar sesión</Text>
-        </View>
-      </LinearGradient>
+          </View>
+          <View className="px-6 pt-4">
+            <Text className="text-3xl font-semibold text-white">Bienvenido de nuevo</Text>
+            <Text className="text-sm text-white/80">Ingresa tus datos para iniciar sesión</Text>
+          </View>
+        </LinearGradient>
 
-      <ScrollView
-        className="-mt-6 flex-1 rounded-t-[32px] bg-white"
-        contentContainerStyle={{ paddingBottom: 48 }}>
-        <View className="px-6 pt-8">
+        <ScrollView
+          className="-mt-6 flex-1 rounded-t-[32px] bg-white"
+          contentContainerStyle={{ paddingBottom: 48, alignItems: 'center' }}>
+          <View
+            className="w-full px-6 pt-8"
+            style={{
+              width: formWidth,
+            }}>
+            <View
+              className="rounded-[32px] border border-gray-100 bg-white px-4 py-6 shadow-lg shadow-slate-200/60"
+              style={{ elevation: 4 }}>
           <View className="mb-4">
             <TextInput
               className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 text-gray-900"
@@ -277,9 +292,11 @@ export default function LoginScreen({
             </View>
           )}
 
-          {featureCard}
-        </View>
+              {featureCard}
+            </View>
+          </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }

@@ -15,11 +15,14 @@ import { useReduceMotionPreference } from '../hooks/useReduceMotionPreference';
 
 const { width: DEVICE_WIDTH, height: DEVICE_HEIGHT } = Dimensions.get('window');
 const SCREEN_WIDTH = DEVICE_WIDTH;
-const CARD_WIDTH = SCREEN_WIDTH * 0.8;
-const CARD_HEIGHT = 230;
+const CARD_WIDTH = Math.min(SCREEN_WIDTH * 0.82, 340);
+const CARD_HEIGHT = CARD_WIDTH / 1.58;
 const CARD_SPACING = 20;
 const SNAP_INTERVAL = CARD_WIDTH + CARD_SPACING;
 const HIT_SLOP = { top: 12, right: 12, bottom: 12, left: 12 };
+const HIGHLIGHT_CARD_WIDTH = Math.min(SCREEN_WIDTH - 72, 320);
+const HIGHLIGHT_CARD_HEIGHT = HIGHLIGHT_CARD_WIDTH / 1.68;
+const CONTENT_WIDTH = Math.min(SCREEN_WIDTH - 32, 460);
 
 const cards = [
   {
@@ -247,7 +250,16 @@ export default function HomeScreen({
       colors={['#fef9c3', '#fef08a']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
-      className="mr-4 h-48 w-[280px] rounded-[32px] p-6">
+      className="mr-4 rounded-[32px] p-6"
+      style={{
+        width: HIGHLIGHT_CARD_WIDTH,
+        height: HIGHLIGHT_CARD_HEIGHT,
+        shadowColor: '#c4b5fd',
+        shadowOpacity: 0.25,
+        shadowRadius: 18,
+        shadowOffset: { width: 0, height: 10 },
+        elevation: 5,
+      }}>
       <View className="flex-row items-center justify-between">
         <Text className="text-xl font-semibold text-[#111827]">{card.brand}</Text>
         <Text className="text-2xl font-bold text-[#111827]">{card.balance}</Text>
@@ -396,12 +408,12 @@ export default function HomeScreen({
         className={`flex-1 ${simplifiedMode ? 'bg-gray-50' : 'bg-[#050505]'}`}
         contentContainerStyle={{ flexGrow: 1, paddingBottom: 16 }}>
         <View
-          className="flex-1 rounded-t-[36px] bg-white pb-12 pt-6"
+          className="flex-1 items-center rounded-t-[36px] bg-white pb-12 pt-6"
           style={{ minHeight: DEVICE_HEIGHT * 0.85 }}>
           {simplifiedMode ? (
-            <View className="px-6">
+            <View className="px-6" style={{ width: CONTENT_WIDTH }}>
               {cardsData.map((card) => (
-                <View key={card.id} className="mb-4 h-64">
+                <View key={card.id} className="mb-4" style={{ height: CARD_HEIGHT }}>
                   {renderCardSurface(card)}
                 </View>
               ))}
@@ -471,7 +483,7 @@ export default function HomeScreen({
           )}
 
           {!simplifiedMode && (
-            <View className="mt-8 px-6">
+            <View className="mt-8 px-6" style={{ width: CONTENT_WIDTH }}>
               <View className="mb-4 flex-row items-center justify-between">
                 <Text className="text-lg font-semibold text-gray-900">Mis tarjetas</Text>
                 <Pressable
@@ -484,13 +496,14 @@ export default function HomeScreen({
                   <Text className="text-xs font-semibold text-gray-800">Administrar</Text>
                 </Pressable>
               </View>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingRight: 24 }}
-                className="mb-4">
-                {highlightedCards.map((card) => renderHighlightedCard(card))}
-              </ScrollView>
+              <View className="mb-4">
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ paddingRight: 24, paddingLeft: 4 }}>
+                  {highlightedCards.map((card) => renderHighlightedCard(card))}
+                </ScrollView>
+              </View>
               <View className="items-center">
                 <View className="h-1.5 w-16 rounded-full bg-gray-200" />
               </View>
@@ -498,8 +511,17 @@ export default function HomeScreen({
                 colors={['#eef2ff', '#e0f2fe']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                className="mt-6 rounded-3xl p-6"
-                style={{ borderWidth: 1, borderColor: 'rgba(148,163,184,0.3)' }}>
+                className="mt-6 rounded-[32px] p-6"
+                style={{
+                  borderWidth: 1,
+                  borderColor: 'rgba(148,163,184,0.3)',
+                  width: '100%',
+                  shadowColor: '#cbd5f5',
+                  shadowOpacity: 0.3,
+                  shadowRadius: 20,
+                  shadowOffset: { width: 0, height: 12 },
+                  elevation: 6,
+                }}>
                 <View className="mb-4 flex-row items-center justify-between">
                   <Text className="text-lg font-semibold text-gray-900">Transacciones</Text>
                   <Pressable
@@ -546,7 +568,7 @@ export default function HomeScreen({
             </View>
           )}
 
-          <View className="mt-8 px-6 pb-4">
+          <View className="mt-8 px-6 pb-4" style={{ width: CONTENT_WIDTH }}>
             <View className="-mx-2 flex-row flex-wrap">
               {displayedMenuItems.map((item) => (
                 <View key={item.label} className="mb-6 w-1/3 px-2">

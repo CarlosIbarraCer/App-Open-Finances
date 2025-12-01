@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View, useWindowDimensions, StyleSheet } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -54,6 +54,12 @@ const cards = [
 ];
 
 export default function WelcomeScreen({ onGetStarted, onShowInfo }: WelcomeScreenProps) {
+  const { width } = useWindowDimensions();
+  const heroCardWidth = Math.min(width - 48, 320);
+  const heroCardHeight = heroCardWidth / 1.58;
+  const stackHeight = heroCardHeight + 160;
+  const offsetScale = heroCardHeight / 320;
+
   return (
     <View className="flex-1 bg-white">
       <ScrollView contentContainerStyle={{ paddingBottom: 48 }} className="flex-1 px-6 pt-16">
@@ -66,23 +72,21 @@ export default function WelcomeScreen({ onGetStarted, onShowInfo }: WelcomeScree
         </View>
 
         <View className="mb-8" accessible={false} importantForAccessibility="no">
-          <View className="relative h-[360px] w-full">
+          <View className="relative w-full" style={{ height: stackHeight }}>
             {cards.map((card, index) => (
               <LinearGradient
                 key={card.id}
                 colors={card.gradient as [string, string]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                className="absolute left-4 right-4 rounded-[32px] p-6"
                 style={{
-                  top: card.offset,
+                  ...styles.heroCard,
+                  width: heroCardWidth,
+                  height: heroCardHeight,
+                  top: card.offset * offsetScale,
                   transform: [{ rotate: card.rotate }],
-                  zIndex: index,
+                  zIndex: cards.length - index,
                   shadowColor: card.gradient[0],
-                  shadowOpacity: 0.25,
-                  shadowRadius: 18,
-                  shadowOffset: { width: 0, height: 12 },
-                  elevation: 6,
                 }}>
                 <View className="flex-row items-center justify-between">
                   <Text className={`font-bold text-white ${card.labelClass}`}>{card.label}</Text>
@@ -173,3 +177,16 @@ export default function WelcomeScreen({ onGetStarted, onShowInfo }: WelcomeScree
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  heroCard: {
+    position: 'absolute',
+    borderRadius: 32,
+    padding: 24,
+    alignSelf: 'center',
+    shadowOpacity: 0.25,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 6,
+  },
+});

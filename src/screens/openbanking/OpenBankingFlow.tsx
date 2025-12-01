@@ -12,6 +12,11 @@ import {
   View,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import {
+  fetchBankBalance,
+  registerBankAccount,
+  type BankAccountSummary,
+} from '../../api/bank';
 
 const TPP_INFO = {
   name: 'FinHub MX',
@@ -54,6 +59,16 @@ type BankConnection = {
   consentExpiration: string;
   renewInDays?: number;
   errorCode?: string;
+};
+
+type RegisteredAspspApp = {
+  id: string;
+  provider: 'bank';
+  label: string;
+  email: string;
+  token: string;
+  accountSummary: BankAccountSummary;
+  lastSyncedAt: string;
 };
 
 type FlowView =
@@ -217,6 +232,12 @@ export default function OpenBankingFlow({ onClose }: OpenBankingFlowProps) {
     null
   );
   const [simulateTechnicalError, setSimulateTechnicalError] = React.useState(false);
+  const [registryEntries, setRegistryEntries] = React.useState<RegisteredAspspApp[]>([]);
+  const [registryAlias, setRegistryAlias] = React.useState('');
+  const [registryEmail, setRegistryEmail] = React.useState('');
+  const [registryLoading, setRegistryLoading] = React.useState(false);
+  const [registryError, setRegistryError] = React.useState<string | null>(null);
+  const [registryBusyToken, setRegistryBusyToken] = React.useState<string | null>(null);
 
   const selectedBank = React.useMemo(
     () => availableBanks.find((bank) => bank.id === selectedBankId) ?? null,
@@ -309,6 +330,74 @@ export default function OpenBankingFlow({ onClose }: OpenBankingFlowProps) {
   const handleCloseSelection = React.useCallback(() => {
     handleGoBackToDashboard();
   }, [handleGoBackToDashboard]);
+
+  const handleRegisterAspspApp = React.useCallback(async () => {
+    const normalizedEmail = registryEmail.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setRegistryError('Ingresa el correo del titular en el ASPSP.');
+      return;
+    }
+    try {
+      setRegistryLoading(true);
+      setRegistryError(null);
+      const summary = await registerBankAccount({
+        email: normalizedEmail,
+        firstName: registryAlias.trim() || undefined,
+      });
+      const token = `tok-${summary.account_id}-${Date.now().toString(36)}`;
+      const entry: RegisteredAspspApp = {
+        id: token,
+        provider: 'bank',
+        label: registryAlias.trim() || summary.email || `Cuenta ${summary.account_id}`,
+        email: summary.email,
+        token,
+        accountSummary: summary,
+        lastSyncedAt: new Date().toISOString(),
+      };
+      setRegistryEntries((prev) => [entry, ...prev]);
+      setRegistryAlias('');
+      setRegistryEmail('');
+    } catch (err) {
+      setRegistryError(
+        err instanceof Error
+          ? err.message
+          : 'No fue posible registrar la aplicación del ASPSP.'
+      );
+    } finally {
+      setRegistryLoading(false);
+    }
+  }, [registryAlias, registryEmail]);
+
+  const handleRefreshAspspBalance = React.useCallback(
+    async (token: string) => {
+      const entry = registryEntries.find((candidate) => candidate.token === token);
+      if (!entry) {
+        setRegistryError('No encontramos la aplicación asociada a ese token.');
+        return;
+      }
+      try {
+        setRegistryBusyToken(token);
+        setRegistryError(null);
+        const summary = await fetchBankBalance({ accountId: entry.accountSummary.account_id });
+        setRegistryEntries((prev) =>
+          prev.map((candidate) =>
+            candidate.token === token
+              ? { ...candidate, accountSummary: summary, lastSyncedAt: new Date().toISOString() }
+              : candidate
+          )
+        );
+      } catch (err) {
+        setRegistryError(
+          err instanceof Error
+            ? err.message
+            : 'No fue posible obtener el saldo con el token registrado.'
+        );
+      } finally {
+        setRegistryBusyToken(null);
+      }
+    },
+    [registryEntries]
+  );
 
   if (view === 'selectBank') {
     return (
@@ -436,6 +525,18 @@ export default function OpenBankingFlow({ onClose }: OpenBankingFlowProps) {
   return (
     <ConnectionsDashboardScreen
       connections={connections}
+      registryControls={{
+        entries: registryEntries,
+        alias: registryAlias,
+        email: registryEmail,
+        loading: registryLoading,
+        error: registryError,
+        busyToken: registryBusyToken,
+        onAliasChange: setRegistryAlias,
+        onEmailChange: setRegistryEmail,
+        onSubmit: handleRegisterAspspApp,
+        onRefresh: handleRefreshAspspBalance,
+      }}
       onConnectNewBank={() => {
         setView('selectBank');
         setSelectedBankId(null);
@@ -975,6 +1076,7 @@ function ConsentErrorScreen({ context, onRetry, onSupport, onClose }: ConsentErr
 
 type ConnectionsDashboardScreenProps = {
   connections: BankConnection[];
+  registryControls: RegistryControls;
   onConnectNewBank: () => void;
   onSyncNow: (connectionId: string) => void;
   onViewDetails: (connectionId: string) => void;
@@ -983,8 +1085,22 @@ type ConnectionsDashboardScreenProps = {
   onClose: () => void;
 };
 
+type RegistryControls = {
+  entries: RegisteredAspspApp[];
+  alias: string;
+  email: string;
+  loading: boolean;
+  error: string | null;
+  busyToken: string | null;
+  onAliasChange: (value: string) => void;
+  onEmailChange: (value: string) => void;
+  onSubmit: () => void;
+  onRefresh: (token: string) => void;
+};
+
 function ConnectionsDashboardScreen({
   connections,
+  registryControls,
   onConnectNewBank,
   onSyncNow,
   onViewDetails,
@@ -992,6 +1108,18 @@ function ConnectionsDashboardScreen({
   onRequestRenewal,
   onClose,
 }: ConnectionsDashboardScreenProps) {
+  const {
+    entries,
+    alias,
+    email,
+    loading,
+    error,
+    busyToken,
+    onAliasChange,
+    onEmailChange,
+    onSubmit,
+    onRefresh,
+  } = registryControls;
   const renderStatus = (connection: BankConnection) => {
     if (connection.status === 'active') {
       return { label: 'Activo', bg: 'bg-emerald-50', text: 'text-emerald-700' };
@@ -1022,6 +1150,19 @@ function ConnectionsDashboardScreen({
               <Ionicons name="close" size={20} color="#111827" />
             </Pressable>
           </View>
+
+          <SimpleAspspRegistryCard
+            entries={entries}
+            alias={alias}
+            email={email}
+            loading={loading}
+            error={error}
+            busyToken={busyToken}
+            onAliasChange={onAliasChange}
+            onEmailChange={onEmailChange}
+            onSubmit={onSubmit}
+            onRefresh={onRefresh}
+          />
 
           {connections.map((connection) => {
             const bank = availableBanks.find((candidate) => candidate.id === connection.bankId);
@@ -1139,6 +1280,129 @@ function ActionButton({ label, onPress, appearance = 'primary' }: ActionButtonPr
       accessibilityRole="button">
       <Text className={`text-center text-sm font-semibold ${text}`}>{label}</Text>
     </Pressable>
+  );
+}
+
+type SimpleAspspRegistryCardProps = RegistryControls;
+
+function SimpleAspspRegistryCard({
+  entries,
+  alias,
+  email,
+  loading,
+  error,
+  busyToken,
+  onAliasChange,
+  onEmailChange,
+  onSubmit,
+  onRefresh,
+}: SimpleAspspRegistryCardProps) {
+  const formatCurrency = (raw?: string) => {
+    const amount = Number(raw ?? 0);
+    if (Number.isNaN(amount)) {
+      return '$0.00';
+    }
+    return amount.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+  };
+
+  const formatTimestamp = (iso: string) => {
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) {
+      return 'Hace unos segundos';
+    }
+    return date.toLocaleString('es-MX', { hour12: false });
+  };
+
+  return (
+    <View className="mb-8 rounded-[32px] border border-dashed border-indigo-200 bg-white/70 p-5 shadow-sm shadow-indigo-50">
+      <Text className="text-xs uppercase tracking-[0.35em] text-indigo-500">
+        Registro rápido ASPSP
+      </Text>
+      <Text className="mt-2 text-xl font-semibold text-gray-900">
+        Vincula el banco simplificado de pruebas
+      </Text>
+      <Text className="mt-1 text-sm text-gray-600">
+        Creamos una credencial y te devolvemos el token para consultar saldos cuando lo necesites.
+      </Text>
+
+      <View className="mt-4 gap-3">
+        <View>
+          <Text className="mb-1 text-xs font-semibold uppercase text-gray-500">Alias</Text>
+          <TextInput
+            value={alias}
+            onChangeText={onAliasChange}
+            placeholder="Ej. Cuenta nómina demo"
+            placeholderTextColor="#94a3b8"
+            className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900"
+          />
+        </View>
+        <View>
+          <Text className="mb-1 text-xs font-semibold uppercase text-gray-500">Correo</Text>
+          <TextInput
+            value={email}
+            onChangeText={onEmailChange}
+            placeholder="demo@aspsp.mx"
+            placeholderTextColor="#94a3b8"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900"
+          />
+        </View>
+      </View>
+
+      {error ? <Text className="mt-2 text-xs text-rose-600">{error}</Text> : null}
+
+      <Pressable
+        onPress={onSubmit}
+        disabled={loading}
+        accessibilityRole="button"
+        className={`mt-4 rounded-3xl px-4 py-3 ${
+          loading ? 'bg-gray-300' : 'bg-indigo-600'
+        }`}>
+        <Text className="text-center text-sm font-semibold text-white">
+          {loading ? 'Registrando ASPSP…' : 'Registrar aplicación'}
+        </Text>
+      </Pressable>
+
+      {entries.length > 0 && (
+        <View className="mt-6 rounded-2xl border border-gray-100 bg-white p-4 shadow">
+          <Text className="text-sm font-semibold text-gray-900">
+            Conexiones creadas (token + saldo)
+          </Text>
+          {entries.map((entry) => (
+            <View
+              key={entry.id}
+              className="mt-4 rounded-xl border border-gray-100 bg-gray-50/70 p-4">
+              <Text className="text-base font-semibold text-gray-900">{entry.label}</Text>
+              <Text selectable className="text-xs text-gray-500">
+                Token: {entry.token}
+              </Text>
+              <Text className="mt-2 text-sm text-gray-600">
+                Saldo disponible:{' '}
+                <Text className="font-semibold text-gray-900">
+                  {formatCurrency(entry.accountSummary.balance_available)}
+                </Text>
+              </Text>
+              <Text className="text-xs text-gray-500">
+                Última consulta: {formatTimestamp(entry.lastSyncedAt)}
+              </Text>
+              <Pressable
+                onPress={() => onRefresh(entry.token)}
+                disabled={busyToken === entry.token}
+                className={`mt-3 rounded-2xl px-3 py-2 ${
+                  busyToken === entry.token ? 'bg-gray-200' : 'bg-gray-900'
+                }`}>
+                <Text className="text-center text-xs font-semibold text-white">
+                  {busyToken === entry.token
+                    ? 'Consultando saldo…'
+                    : 'Consultar saldo con token'}
+                </Text>
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
   );
 }
 

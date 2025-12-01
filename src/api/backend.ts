@@ -1,11 +1,11 @@
-const API_BASE_URL = 'https://dfda813df96c.ngrok-free.app';
+const API_BASE_URL = 'https://roberta-dreary-carolynn.ngrok-free.dev/api';
 
 const jsonHeaders = {
   'Content-Type': 'application/json',
 };
 
-const REGISTER_PATH = '/api/v1/users/register';
-const LOGIN_PATH = '/auth/token/';
+const REGISTER_PATH = '/auth/register/';
+const LOGIN_PATH = '/auth/login/';
 
 async function request<T = unknown>(path: string, options: RequestInit = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -39,16 +39,32 @@ type RegisterRequest = {
 };
 
 export async function registerUser(payload: RegisterRequest) {
+  const normalizedEmail = payload.email.trim().toLowerCase();
+  const cleanedName = payload.name.trim() || 'Cliente Open Finances';
+  const nameParts = cleanedName.split(/\s+/).filter(Boolean);
+  const firstName = nameParts.shift() ?? 'Cliente';
+  const lastName = nameParts.join(' ') || firstName;
+
   await request(REGISTER_PATH, {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      username: normalizedEmail,
+      email: normalizedEmail,
+      first_name: firstName,
+      last_name: lastName,
+      password: payload.password,
+      password2: payload.password,
+    }),
   });
 }
 
 export async function loginUser(payload: { email: string; password: string }) {
   const tokens = await request<LoginResponse>(LOGIN_PATH, {
     method: 'POST',
-    body: JSON.stringify({ username: payload.email, password: payload.password }),
+    body: JSON.stringify({
+      username: payload.email.trim().toLowerCase(),
+      password: payload.password,
+    }),
   });
   if (!tokens || !tokens.access) {
     throw new Error('El backend no devolvió credenciales válidas.');

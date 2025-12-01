@@ -9,10 +9,13 @@ import {
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import SimplifiedFeedbackView from './SimplifiedFeedbackView';
+import { initiateSimplifiedTransfer } from '../../api/bank';
 
 type SimplifiedTransferScreenProps = {
   onBack: () => void;
   userName: string;
+  userEmail?: string;
+  onRefreshBank?: () => void;
 };
 
 type TransferStep = 'beneficiary' | 'amount' | 'confirm' | 'feedback';
@@ -31,6 +34,8 @@ const formatCurrency = (value: number) =>
 export default function SimplifiedTransferScreen({
   onBack,
   userName,
+  userEmail,
+  onRefreshBank,
 }: SimplifiedTransferScreenProps) {
   const [step, setStep] = React.useState<TransferStep>('beneficiary');
   const [selectedBeneficiary, setSelectedBeneficiary] = React.useState<
@@ -40,6 +45,13 @@ export default function SimplifiedTransferScreen({
   const hitSlop = { top: 12, bottom: 12, left: 12, right: 12 };
   const instructionRef = React.useRef<React.ComponentRef<typeof Text>>(null);
   const [feedbackResult, setFeedbackResult] = React.useState<'success' | 'error' | null>(null);
+  const [transferReceipt, setTransferReceipt] = React.useState<{
+    beneficiaryName: string;
+    amount: number;
+    transferId?: string;
+  } | null>(null);
+  const [transferError, setTransferError] = React.useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   React.useEffect(() => {
     const announcements: Record<TransferStep, string> = {
@@ -71,11 +83,17 @@ export default function SimplifiedTransferScreen({
     } else if (step === 'amount') {
       setStep('beneficiary');
       setSelectedAmount(null);
+      setTransferReceipt(null);
+      setTransferError(null);
     } else if (step === 'confirm') {
       setStep('amount');
+      setTransferReceipt(null);
+      setTransferError(null);
     } else {
       setStep('confirm');
       setFeedbackResult(null);
+      setTransferReceipt(null);
+      setTransferError(null);
     }
   };
 
@@ -84,22 +102,66 @@ export default function SimplifiedTransferScreen({
     setSelectedAmount(null);
     setSelectedBeneficiary(null);
     setFeedbackResult(null);
+    setTransferReceipt(null);
+    setTransferError(null);
   };
 
   const handleBeneficiaryPress = (beneficiary: (typeof beneficiaries)[number]) => {
     setSelectedBeneficiary(beneficiary);
+    setTransferReceipt(null);
+    setTransferError(null);
     setStep('amount');
   };
 
   const handleAmountPress = (amount: number) => {
+    setTransferReceipt(null);
+    setTransferError(null);
     setSelectedAmount(amount);
     setStep('confirm');
   };
 
-  const handleConfirmTransfer = () => {
-    const outcome = selectedAmount && selectedAmount > 500 ? 'error' : 'success';
-    setFeedbackResult(outcome);
-    setStep('feedback');
+  const handleConfirmTransfer = async () => {
+    if (!selectedBeneficiary || !selectedAmount) {
+      setTransferError('Selecciona beneficiario y monto.');
+      setFeedbackResult('error');
+      setStep('feedback');
+      return;
+    }
+    if (!userEmail) {
+      setTransferError(
+        'Necesitas iniciar sesión para autorizar transferencias. Vuelve e inicia sesión.'
+      );
+      setFeedbackResult('error');
+      setStep('feedback');
+      return;
+    }
+    try {
+      setIsSubmitting(true);
+      setTransferError(null);
+      const response = await initiateSimplifiedTransfer({
+        email: userEmail,
+        beneficiaryId: selectedBeneficiary.id,
+        amount: selectedAmount,
+      });
+      setTransferReceipt({
+        beneficiaryName: selectedBeneficiary.name,
+        amount: selectedAmount,
+        transferId: response.transfer_id,
+      });
+      setFeedbackResult('success');
+      setStep('feedback');
+      onRefreshBank?.();
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'No pudimos completar la transferencia. Inténtalo más tarde.';
+      setTransferError(message);
+      setFeedbackResult('error');
+      setStep('feedback');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getFeedbackMessage = (result: 'success' | 'error') => {
@@ -107,10 +169,11 @@ export default function SimplifiedTransferScreen({
       return {
         heading: 'Éxito',
         message: { pre: 'Su transferencia se ha realizado ', emphasis: 'correctamente', post: '' },
-        detail:
-          selectedBeneficiary && selectedAmount
-            ? `Enviada a ${selectedBeneficiary.name} por ${formatCurrency(selectedAmount)}`
-            : undefined,
+        detail: transferReceipt
+          ? `Enviada a ${transferReceipt.beneficiaryName} por ${formatCurrency(
+              transferReceipt.amount
+            )}`
+          : undefined,
       } as const;
     }
     return {
@@ -120,7 +183,7 @@ export default function SimplifiedTransferScreen({
         emphasis: 'error',
         post: ', por falta de saldo en su cuenta',
       },
-      detail: 'Inténtalo con un monto menor o verifica tu saldo disponible.',
+      detail: transferError ?? 'Inténtalo con un monto menor o verifica tu saldo disponible.',
     } as const;
   };
 
@@ -224,14 +287,22 @@ export default function SimplifiedTransferScreen({
         </View>
         <TouchableOpacity
           onPress={handleConfirmTransfer}
+          disabled={isSubmitting}
           accessibilityRole="button"
           accessibilityLabel="Confirmar transferencia"
           accessibilityHint="Completa el envío con los datos seleccionados"
-          className="mt-6 rounded-3xl bg-[#2563EB] px-4 py-4 shadow-lg shadow-indigo-200">
+          className={`mt-6 rounded-3xl px-4 py-4 shadow-lg shadow-indigo-200 ${
+            isSubmitting ? 'bg-gray-300' : 'bg-[#2563EB]'
+          }`}>
           <Text className="text-center text-base font-semibold text-white">
-            Confirmar transferencia
+            {isSubmitting ? 'Enviando...' : 'Confirmar transferencia'}
           </Text>
         </TouchableOpacity>
+        {!userEmail ? (
+          <Text className="mt-3 text-xs text-rose-500">
+            Necesitas iniciar sesión para completar transferencias.
+          </Text>
+        ) : null}
       </View>
     );
   };
