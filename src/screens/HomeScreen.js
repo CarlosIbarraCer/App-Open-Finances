@@ -27,7 +27,7 @@ const cards = [
     type: 'Amazon Platinium',
     number: '4756 •••• •••• 9018',
     balance: '$3,469.52',
-    colors: ['#1e1b4b', '#3b82f6'],
+    colors: ['#0f766e', '#14b8a6'],
   },
   {
     id: 2,
@@ -41,7 +41,7 @@ const cards = [
     type: 'Mastercard Black',
     number: '6789 •••• •••• 3456',
     balance: '$8,921.03',
-    colors: ['#dc2626', '#f97316'],
+    colors: ['#f59e0b', '#f97316'],
   },
 ];
 
@@ -154,6 +154,7 @@ export default function HomeScreen({
   simplifiedMode = false,
   onOpenBankConnections,
   onOpenFinanceModule,
+  onToggleSimplified,
 }) {
   const [activeCardIndex, setActiveCardIndex] = React.useState(0);
   const scrollX = React.useRef(new Animated.Value(0)).current;
@@ -181,6 +182,12 @@ export default function HomeScreen({
     guardianAi: 'guardianAi',
   };
 
+  const handleQuickToggleSimplified = () => {
+    if (typeof onToggleSimplified === 'function') {
+      onToggleSimplified();
+    }
+  };
+
   const handleMenuItemPress = (itemKey) => {
     if (itemKey === 'transfer' && typeof onTransfer === 'function') {
       onTransfer();
@@ -198,20 +205,26 @@ export default function HomeScreen({
   if (simplifiedMode) {
     return (
       <View className="flex-1 bg-white">
-        <View className="rounded-b-[32px] bg-[#050505] px-6 pb-10 pt-16">
-          <View className="flex-row items-center justify-between">
-            <View>
-              <Text className="text-sm text-gray-400">Hola,</Text>
-              <Text className="text-2xl font-semibold text-white">{userName}!</Text>
-            </View>
-            <View className="relative">
-              <View className="h-11 w-11 items-center justify-center rounded-full bg-gray-800">
-                <Ionicons name="notifications-outline" size={22} color="#fff" />
-              </View>
-              <View className="absolute -right-1 -top-1 h-4 w-4 rounded-full bg-pink-500" />
-            </View>
+      <View className="rounded-b-[32px] bg-[#050505] px-6 pb-10 pt-16">
+        <View className="flex-row items-center justify-between">
+          <View>
+            <Text className="text-sm text-gray-400">Hola,</Text>
+            <Text className="text-2xl font-semibold text-white">{userName}!</Text>
           </View>
+          <TouchableOpacity
+            onPress={handleQuickToggleSimplified}
+            accessibilityRole="button"
+            accessibilityLabel="Cambiar a vista completa"
+            accessibilityHint="Alterna entre la vista simplificada y la completa"
+            className="relative"
+            hitSlop={HIT_SLOP}>
+            <View className="h-11 w-11 items-center justify-center rounded-full bg-[#0f172a]">
+              <Ionicons name="eye-off-outline" size={22} color="#fff" />
+            </View>
+            <View className="absolute -right-1 -top-1 h-4 w-4 rounded-full bg-sky-400" />
+          </TouchableOpacity>
         </View>
+      </View>
 
         <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 32 }}>
           <View className="px-6 pt-8">
@@ -244,7 +257,7 @@ export default function HomeScreen({
   const renderHighlightedCard = (card) => (
     <LinearGradient
       key={card.id}
-      colors={['#fef9c3', '#fef08a']}
+      colors={['#fef3c7', '#fde68a']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       className="mr-4 h-48 w-[280px] rounded-[32px] p-6">
@@ -356,44 +369,54 @@ export default function HomeScreen({
   };
 
   return (
-    <View className={`flex-1 ${simplifiedMode ? 'bg-gray-50' : 'bg-[#050505]'}`}>
+    <View className={`flex-1 ${simplifiedMode ? 'bg-gray-50' : 'bg-[#0b1224]'}`}>
       <View
         className={`flex-row items-center justify-between px-6 pb-4 pt-16 ${
-          simplifiedMode ? 'bg-gray-50' : 'bg-[#050505]'
+          simplifiedMode ? 'bg-gray-50' : 'bg-[#0b1224]'
         }`}>
         <View className="flex-row items-center">
           <Image
             source={{
-              uri: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=facearea&w=120&h=120',
+              uri: 'https://images.unsplash.com/photo-1521119989659-a83eee488004?auto=format&fit=crop&w=200&q=80',
             }}
             className="mr-3 h-12 w-12 rounded-full"
+            accessibilityRole="image"
+            accessibilityLabel={`Foto de perfil de ${userName}`}
           />
           <Text
             className={`text-xl font-semibold ${simplifiedMode ? 'text-gray-900' : 'text-white'}`}>
             Hola, {userName}
           </Text>
         </View>
-        <View className="relative">
+        <TouchableOpacity
+          onPress={handleQuickToggleSimplified}
+          accessibilityRole="button"
+          accessibilityLabel={
+            simplifiedMode ? 'Cambiar a vista completa' : 'Activar vista simplificada'
+          }
+          accessibilityHint="Alterna entre la vista completa y la vista simplificada accesible"
+          hitSlop={HIT_SLOP}
+          className="relative">
           <View
             className={`h-11 w-11 items-center justify-center rounded-full ${
-              simplifiedMode ? 'border border-gray-200 bg-white' : 'bg-gray-800'
+              simplifiedMode ? 'border border-gray-200 bg-white' : 'bg-[#0f172a]'
             }`}>
-            <Ionicons
-              name="notifications-outline"
+              <Ionicons
+              name={simplifiedMode ? 'eye-off-outline' : 'eye-outline'}
               size={22}
               color={simplifiedMode ? '#111827' : '#fff'}
             />
           </View>
           <View
             className={`absolute -right-1 -top-1 h-4 w-4 rounded-full ${
-              simplifiedMode ? 'bg-emerald-400' : 'bg-pink-500'
+              simplifiedMode ? 'bg-emerald-400' : 'bg-sky-400'
             }`}
           />
-        </View>
+        </TouchableOpacity>
       </View>
 
       <ScrollView
-        className={`flex-1 ${simplifiedMode ? 'bg-gray-50' : 'bg-[#050505]'}`}
+        className={`flex-1 ${simplifiedMode ? 'bg-gray-50' : 'bg-[#0b1224]'}`}
         contentContainerStyle={{ flexGrow: 1, paddingBottom: 16 }}>
         <View
           className="flex-1 rounded-t-[36px] bg-white pb-12 pt-6"
@@ -458,15 +481,15 @@ export default function HomeScreen({
                   <TouchableOpacity
                     key={card.id}
                     onPress={() => handleIndicatorPress(index)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Mostrar tarjeta ${index + 1}`}
-                    accessibilityState={{ selected: index === activeCardIndex }}
-                    className={`h-2 rounded-full ${
-                      index === activeCardIndex ? 'w-8 bg-gray-900' : 'w-2 bg-gray-300'
-                    }`}
-                  />
-                ))}
-              </View>
+                accessibilityRole="button"
+                accessibilityLabel={`Mostrar tarjeta ${index + 1}`}
+                accessibilityState={{ selected: index === activeCardIndex }}
+                className={`h-2 rounded-full ${
+                  index === activeCardIndex ? 'w-8 bg-[#0f172a]' : 'w-2 bg-gray-300'
+                }`}
+              />
+            ))}
+          </View>
             </>
           )}
 
@@ -495,7 +518,7 @@ export default function HomeScreen({
                 <View className="h-1.5 w-16 rounded-full bg-gray-200" />
               </View>
               <LinearGradient
-                colors={['#eef2ff', '#e0f2fe']}
+                colors={['#f3e8ff', '#e0f2fe']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 className="mt-6 rounded-3xl p-6"
@@ -623,7 +646,7 @@ export default function HomeScreen({
                   openBankingEnabled
                     ? simplifiedMode
                       ? 'bg-emerald-500'
-                      : 'bg-gray-900'
+                      : 'bg-[#0f766e]'
                     : 'bg-gray-300'
                 }`}>
                 <Text className="text-center text-base font-semibold text-white">Gestionar permisos</Text>

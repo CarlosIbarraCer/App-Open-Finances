@@ -93,8 +93,13 @@ const buildNameFromEmail = (email: string) => {
 const VOICE_PREF_KEY = 'app.voiceCommandsEnabled';
 const SESSION_STORAGE_KEY = 'app.authSession';
 
+// Temporary flag to skip the authentication flow and land directly on the dashboard.
+const AUTH_DISABLED = true;
+
 export default function App() {
-  const [rootScreen, setRootScreen] = React.useState<RootScreen>('welcome');
+  const [rootScreen, setRootScreen] = React.useState<RootScreen>(
+    AUTH_DISABLED ? 'dashboard' : 'welcome'
+  );
   const [activeTab, setActiveTab] = React.useState<DashboardTab>('home');
   const [users, setUsers] = React.useState<StoredUser[]>([
     {
@@ -190,6 +195,10 @@ export default function App() {
   };
 
   const openLogin = (options?: { keepMessage?: boolean }) => {
+    if (AUTH_DISABLED) {
+      setRootScreen('dashboard');
+      return;
+    }
     setRootScreen('login');
     setLoginError(null);
     setRegisterError(null);
@@ -200,6 +209,10 @@ export default function App() {
   };
 
   const goToRegister = () => {
+    if (AUTH_DISABLED) {
+      setRootScreen('dashboard');
+      return;
+    }
     setRootScreen('register');
     setLoginError(null);
     setRegisterError(null);
@@ -326,7 +339,7 @@ export default function App() {
     setActiveUser(null);
     setActiveTab('home');
     resetFeedback();
-    setRootScreen('welcome');
+    setRootScreen(AUTH_DISABLED ? 'dashboard' : 'welcome');
     clearSession();
     AccessibilityInfo.announceForAccessibility('Sesión cerrada');
   };
@@ -424,7 +437,12 @@ export default function App() {
 
   const renderDashboardContent = () => {
     if (simplifiedMode) {
-      return <SimplifiedDashboard userName={activeUser?.name ?? 'Juan Pérez'} />;
+      return (
+        <SimplifiedDashboard
+          userName={activeUser?.name ?? 'Juan Pérez'}
+          onToggleSimplified={handleToggleSimplified}
+        />
+      );
     }
     if (activeTab === 'search') {
       return (
@@ -466,13 +484,33 @@ export default function App() {
         userName={activeUser?.name ?? 'Juan Pérez'}
         onTransfer={openTransfer}
         simplifiedMode={simplifiedMode}
+        onToggleSimplified={handleToggleSimplified}
         onOpenBankConnections={openOpenBankingFlow}
         onOpenFinanceModule={openOpenFinanceModule}
       />
     );
   };
 
+  const renderDashboardShell = () => (
+    <View className={`flex-1 ${simplifiedMode ? 'bg-gray-50' : 'bg-[#050505]'}`}>
+      <View className="flex-1">{renderDashboardContent()}</View>
+      {!simplifiedMode && (
+        <Navbar activeTab={activeTab} onChange={setActiveTab} appearance="dark" />
+      )}
+    </View>
+  );
+
   const renderCurrentScreen = () => {
+    if (
+      AUTH_DISABLED &&
+      (rootScreen === 'welcome' ||
+        rootScreen === 'about' ||
+        rootScreen === 'login' ||
+        rootScreen === 'register' ||
+        rootScreen === 'registerSuccess')
+    ) {
+      return renderDashboardShell();
+    }
     switch (rootScreen) {
       case 'welcome':
         return (
@@ -535,14 +573,7 @@ export default function App() {
         );
       case 'dashboard':
       default:
-        return (
-          <View className={`flex-1 ${simplifiedMode ? 'bg-gray-50' : 'bg-[#050505]'}`}>
-            <View className="flex-1">{renderDashboardContent()}</View>
-            {!simplifiedMode && (
-              <Navbar activeTab={activeTab} onChange={setActiveTab} appearance="dark" />
-            )}
-          </View>
-        );
+        return renderDashboardShell();
     }
   };
 

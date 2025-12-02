@@ -57,20 +57,22 @@ export default function SimplifiedHomeScreen({
     <View className="flex-1">
       <View className="rounded-b-[32px] bg-[#070b15] px-6 pb-12 pt-14">
         <View className="flex-row items-center justify-between">
-          <View>
-            <Text className="text-sm text-white/70">Hola,</Text>
-            <Text accessibilityRole="header" className="text-2xl font-semibold text-white">
-              {userName}!
-            </Text>
+          <View className="flex-row items-center">
+            <Image
+              source={{
+                uri: 'https://images.unsplash.com/photo-1521119989659-a83eee488004?auto=format&fit=crop&w=200&q=80',
+              }}
+              className="mr-3 h-12 w-12 rounded-full border-2 border-white/20"
+              accessibilityRole="image"
+              accessibilityLabel={`Foto de perfil de ${userName}`}
+            />
+            <View>
+              <Text className="text-sm text-white/70">Hola,</Text>
+              <Text accessibilityRole="header" className="text-2xl font-semibold text-white">
+                {userName}!
+              </Text>
+            </View>
           </View>
-          <Image
-            source={{
-              uri: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=facearea&w=120&h=120',
-            }}
-            className="h-12 w-12 rounded-full border-2 border-white/20"
-            accessibilityRole="image"
-            accessibilityLabel={`Foto de perfil de ${userName}`}
-          />
         </View>
       </View>
 
